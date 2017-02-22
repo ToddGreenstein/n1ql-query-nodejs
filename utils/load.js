@@ -36,15 +36,19 @@ var ccnIndex = 'CREATE INDEX find_pii_ccn ON ' + config.couchbase.bucket +
     '(v),"(\\\\d{4}-\\\\d{4}-\\\\d{4}-\\\\d{4}))|(\\\\b\\\\d{16}\\\\b)") END' +
     ' WITH {"defer_build":true}';
 
+var rangeIndex = 'CREATE INDEX find_meta ON ' + config.couchbase.bucket +
+    '(TONUMBER(LTRIM(meta().id,"test::"))) WITH {"defer_build":true}';
+
 var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
-    '(p1,find_pii_ccn,find_pii_ssn) USING GSI';
+    '(p1,find_pii_ccn,find_pii_ssn,find_meta) USING GSI';
 
 defineIndex(primaryIndex, "PRIMARY")
     .then(defineIndex(ccnIndex, "find_pii_ccn"))
     .then(defineIndex(ssnIndex, "find_pii_ssn"))
+    .then(defineIndex(rangeIndex, "find_meta"))
     .then(preload)
-    .then(() => {
-        console.log("DONE");
+    .then((status) => {
+        //process.exit(0);
     })
     .catch((err) => {
         console.log("ERR:", err)
@@ -77,6 +81,8 @@ function preload() {
             var completed = 0;
             var runFlag = false;
             var startTime = process.hrtime();
+            console.log("====  \n  Creating " +
+            config.application.thresholdItemCount + " profiles...");
 
             // Function for upserting one document, during preload.  Notice,
             // this is only in scope for preload
@@ -90,8 +96,9 @@ function preload() {
                     console.log("  Preloaded Bucket: " + parseInt((time[0] * 1000) +
                             (time[1] / 1000000)) + " ms for: " + completed +
                         " items");
-                    defineIndex(buildIndexString, "Build Deferred");
-                    resolve();
+                    defineIndex(buildIndexString, "Build Deferred").then(
+                        resolve(true)
+                    );
                 } else {
                     if (completed <= config.application.thresholdItemCount) {
 
