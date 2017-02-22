@@ -1,0 +1,17 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "description": "nodejs user profile store, query and index examples for couchbase",
+  "main": "load.js",
+  "scripts": {
+       "start":"node utils/load.js",
+       "build":"node utils/provision.js"
+  },
+  "author": "todd@couchbase.com",
+  "license": "ISC",
+  "dependencies": {
+    "couchbase": "~2.3.0",
+    "faker" : "~4.1.0",
+    "request":"~2.79.0"
+  }
+}
