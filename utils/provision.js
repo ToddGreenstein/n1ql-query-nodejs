@@ -3,6 +3,7 @@
 var config = require('./config');
 var request = require('request');
 
+
 var checkInterval = config.application.checkInterval;
 
 class cluster {
@@ -68,6 +69,7 @@ class cluster {
             .then(this._memory)
             .then(this._admin)
             .then(this._bucket)
+            .then(this._bucketOnline.bind(this))
             .then(this._finish.bind(this))
             .catch((err) => {
                 console.log("ERR:", err)
@@ -338,6 +340,32 @@ class cluster {
             });
     }
 
+    _buckretResponding() {
+        return new Promise(
+            (resolve, reject)=> {
+                request.get({
+                    url: "http://" + this.locals.endPoint + "/pools/default/buckets/" + this.locals.sampleBucket + "/stats",
+                    auth: {
+                        'user': this.locals.user,
+                        'pass': this.locals.password,
+                        'sendImmediately': true
+                    }
+                }, (err, httpResponse, body) => {
+                    if (err) {
+                        resolve(false);
+                        //return;
+                    }
+                    //console.log("d, statslength,",JSON.parse(body).op.samples.timestamp.length)
+                    if (JSON.parse(body).op.samples.timestamp.length>=5) {
+                        resolve(true);
+                    }
+                    else{
+                        resolve(false);
+                    }
+                });
+            });
+    }
+
     _loaded() {
         return new Promise(
             (resolve, reject)=> {
@@ -353,6 +381,24 @@ class cluster {
                         process.stdout.write("    LOADING ITEMS:" +
                             Math.round(100*(this.locals.currentCount/this.locals.sampleBucketCount))+ "%  of " +
                             this.locals.sampleBucketCount + " Items\r");
+                    });
+                }, this.locals.checkInterval);
+            }
+        );
+    }
+
+    _bucketOnline() {
+        return new Promise(
+            (resolve, reject)=> {
+                this.locals.timerLoop = setInterval(()=> {
+                    this._buckretResponding().then((loaded)=> {
+                        if (loaded) {
+                            clearInterval(this.locals.timerLoop);
+                            console.log("\n    BUCKET:", this.locals.sampleBucket, "READY.");
+                            resolve("DONE");
+                            return;
+                        }
+                        process.stdout.write(".");
                     });
                 }, this.locals.checkInterval);
             }
@@ -397,6 +443,8 @@ class cluster {
     _finish() {
         return new Promise(
             (resolve, reject)=> {
+                var load = require('./load');
+                load.attempt();
                 console.log("Cluster " + this.locals.endPoint + " provisioning complete. \n" +
                     "   To login to couchbase: open a browser " + this.locals.endPoint + "\n" );
                 resolve("ok");

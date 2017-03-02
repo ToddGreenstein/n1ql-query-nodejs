@@ -42,6 +42,25 @@ var rangeIndex = 'CREATE INDEX find_meta ON ' + config.couchbase.bucket +
 var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
     '(p1,find_pii_ccn,find_pii_ssn,find_meta) USING GSI';
 
+module.exports.attempt = function(){
+  return new Promise(
+    (resolve,reject) => {
+      defineIndex(primaryIndex, "PRIMARY")
+          .then(defineIndex(ccnIndex, "find_pii_ccn"))
+          .then(defineIndex(ssnIndex, "find_pii_ssn"))
+          .then(defineIndex(rangeIndex, "find_meta"))
+          .then(preload)
+          .then((status) => {
+              console.log("Done");
+              resolve();
+          })
+          .catch((err) => {
+              console.log("ERR:", err)
+              process.exit(0);
+          });
+    }
+  )}
+/*
 defineIndex(primaryIndex, "PRIMARY")
     .then(defineIndex(ccnIndex, "find_pii_ccn"))
     .then(defineIndex(ssnIndex, "find_pii_ssn"))
@@ -54,7 +73,7 @@ defineIndex(primaryIndex, "PRIMARY")
         console.log("ERR:", err)
         process.exit(0);
     });
-
+*/
 function defineIndex(indexQuery, indexName) {
     return new Promise(
         (resolve, reject) => {
