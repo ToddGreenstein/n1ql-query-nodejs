@@ -36,11 +36,22 @@ var ccnIndex = 'CREATE INDEX find_pii_ccn ON ' + config.couchbase.bucket +
     '(v),"(\\\\d{4}-\\\\d{4}-\\\\d{4}-\\\\d{4}))|(\\\\b\\\\d{16}\\\\b)") END' +
     ' WITH {"defer_build":true}';
 
+var paymentsByUserIndex = 'CREATE INDEX `sum_payments_by_user` ON ' +
+    config.couchbase.bucket + '(email, ARRAY_COUNT(ARRAY v.amount ' +
+    'FOR v IN accountHistory WHEN v.type="payment" END), ARRAY_SUM' +
+    '(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN ' +
+    'v.type="payment" END)) WHERE email IS NOT MISSING WITH {"defer_build":true}';
+
+var acctEntriesByUsersIndex = 'CREATE INDEX `find_acct_entries_by_user` ON '+
+    config.couchbase.bucket + '(`email`,DISTINCT ARRAY v.type FOR v IN '+
+    'accountHistory END, accountHistory) WITH {"defer_build":true}'
+
 var rangeIndex = 'CREATE INDEX find_meta ON ' + config.couchbase.bucket +
     '(TONUMBER(LTRIM(meta().id,"test::"))) WITH {"defer_build":true}';
 
 var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
-    '(p1,find_pii_ccn,find_pii_ssn,find_meta) USING GSI';
+    '(p1,find_pii_ccn,find_pii_ssn,find_meta,sum_payments_by_user,' +
+    'find_acct_entries_by_user) USING GSI';
 
 module.exports.attempt = function(){
   return new Promise(
@@ -49,6 +60,8 @@ module.exports.attempt = function(){
           .then(defineIndex(ccnIndex, "find_pii_ccn"))
           .then(defineIndex(ssnIndex, "find_pii_ssn"))
           .then(defineIndex(rangeIndex, "find_meta"))
+          .then(defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
+          .then(defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
           .then(preload)
           .then((status) => {
               console.log("Done");
@@ -60,20 +73,7 @@ module.exports.attempt = function(){
           });
     }
   )}
-/*
-defineIndex(primaryIndex, "PRIMARY")
-    .then(defineIndex(ccnIndex, "find_pii_ccn"))
-    .then(defineIndex(ssnIndex, "find_pii_ssn"))
-    .then(defineIndex(rangeIndex, "find_meta"))
-    .then(preload)
-    .then((status) => {
-        //process.exit(0);
-    })
-    .catch((err) => {
-        console.log("ERR:", err)
-        process.exit(0);
-    });
-*/
+
 function defineIndex(indexQuery, indexName) {
     return new Promise(
         (resolve, reject) => {
