@@ -136,3 +136,25 @@ SELECT email,
   ARRAY_SUM(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN v.type='payment' END) total
 FROM default USE INDEX (sum_payments_by_user) WHERE email IS NOT MISSING
 ```
+
+### Sum of two atomic counter documents, using KEYS
+Query to sum two atomic counter documents, using their keys only.  
+- **Query**
+```sql
+SELECT RAW array_sum((SELECT RAW totalCount
+    FROM default totalCount USE KEYS [ "counter_US", "counter_EMEA" ]));
+--OR
+SELECT array_sum((SELECT RAW totalCount FROM default as totalCount where meta().id in ["counter_US", "counter_EMEA"]));
+```
+
+### Sum of two atomic counter documents, using a secondary index
+Deterministic query using a keymask to sum N number of atomic counter documents.  
+- **Index**
+```sql
+CREATE INDEX counter_index ON default((meta().id),self) WHERE (SUBSTR((meta().id), 0, 7) = "counter")
+```
+- **Query**
+```sql
+--(requires an index due to https://issues.couchbase.com/browse/MB-23897)
+SELECT RAW SUM(totalCount) FROM default as totalCount WHERE SUBSTR(meta().id,0,7)=="counter";
+```

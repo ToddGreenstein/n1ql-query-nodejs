@@ -49,9 +49,13 @@ var acctEntriesByUsersIndex = 'CREATE INDEX `find_acct_entries_by_user` ON '+
 var rangeIndex = 'CREATE INDEX find_meta ON ' + config.couchbase.bucket +
     '(TONUMBER(LTRIM(meta().id,"test::"))) WITH {"defer_build":true}';
 
+var counterIndex = 'CREATE INDEX counter_index ON ' + config.couchbase.bucket +
+'((meta().id),self) WHERE (substr((meta().id), 0, 7) = "counter")' +
+' WITH {"defer_build":true}';
+
 var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
     '(p1,find_pii_ccn,find_pii_ssn,find_meta,sum_payments_by_user,' +
-    'find_acct_entries_by_user) USING GSI';
+    'find_acct_entries_by_user,counter_index) USING GSI';
 
 module.exports.attempt = function(){
   return new Promise(
@@ -60,8 +64,10 @@ module.exports.attempt = function(){
           .then(defineIndex(ccnIndex, "find_pii_ccn"))
           .then(defineIndex(ssnIndex, "find_pii_ssn"))
           .then(defineIndex(rangeIndex, "find_meta"))
+          .then(defineIndex(counterIndex, "counter_index"))
           .then(defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
           .then(defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
+          .then(addAtomicCounterExampleDocs)
           .then(preload)
           .then((status) => {
               console.log("Done");
@@ -93,6 +99,22 @@ function defineIndex(indexQuery, indexName) {
             });
         });
 }
+
+function addAtomicCounterExampleDocs(){
+    return new Promise(
+        (resolve, reject) => {
+          bucket.counter("counter_US", 1, {initial: 500}, (err, res) => {
+            if(res){
+              bucket.counter("counter_EMEA", 1, {initial: 500}, (err, res) => {
+                if(res){
+                  console.log("==== \n  Added atomic counter:counter_US and counter_EMEA" );
+                  resolve();
+                }
+              });
+            }
+          });
+        });
+      }
 
 function preload() {
     return new Promise(
