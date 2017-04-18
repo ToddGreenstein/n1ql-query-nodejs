@@ -67,7 +67,7 @@ module.exports.attempt = function(){
           .then(_ => defineIndex(counterIndex, "counter_index"))
           .then(_ => defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
           .then(_ => defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
-          .then(_ => addAtomicCounterExampleDocs)
+          .then(_ => addAtomicCounterExampleDocs())
           .then(_ => defineIndex(buildIndexString,'Deferred Indexes'))
           .then(preload)
           .then((status) => {
