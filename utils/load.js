@@ -61,13 +61,14 @@ module.exports.attempt = function(){
   return new Promise(
     (resolve,reject) => {
       defineIndex(primaryIndex, "PRIMARY")
-          .then(defineIndex(ccnIndex, "find_pii_ccn"))
-          .then(defineIndex(ssnIndex, "find_pii_ssn"))
-          .then(defineIndex(rangeIndex, "find_meta"))
-          .then(defineIndex(counterIndex, "counter_index"))
-          .then(defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
-          .then(defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
-          .then(addAtomicCounterExampleDocs)
+          .then(_ => defineIndex(ccnIndex, "find_pii_ccn"))
+          .then(_ => defineIndex(ssnIndex, "find_pii_ssn"))
+          .then(_ => defineIndex(rangeIndex, "find_meta"))
+          .then(_ => defineIndex(counterIndex, "counter_index"))
+          .then(_ => defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
+          .then(_ => defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
+          .then(_ => addAtomicCounterExampleDocs)
+          .then(_ => defineIndex(buildIndexString,'Deferred Indexes'))
           .then(preload)
           .then((status) => {
               console.log("Done");
@@ -137,9 +138,7 @@ function preload() {
                     console.log("  Preloaded Bucket: " + parseInt((time[0] * 1000) +
                             (time[1] / 1000000)) + " ms for: " + completed +
                         " items");
-                    defineIndex(buildIndexString, "Build Deferred").then(
-                        resolve(true)
-                    );
+                        resolve(true);
                 } else {
                     if (completed <= config.application.thresholdItemCount) {
 
