@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+    cbdb:
+        image: couchbase/server:4.6.1
+        ports:
+            - "8091-8094:8091-8094"
+            - "11207-11210:11207-11210"
+            - "18091-18094:18091-18094"
+    nodejs:
+        build:
+          context: .
+          dockerfile: Dockerfile-Node-App

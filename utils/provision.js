@@ -60,7 +60,6 @@ class cluster {
         //  promise is instantiated.
 
         this._verifyNodejsVersion(locals)
-            .then(this._instanceExsists)
             .then(this._verifyCouchbaseVersion.bind(this))
             .then(this._init)
             .then(this._rename)
@@ -340,23 +339,27 @@ class cluster {
             });
     }
 
-    _buckretResponding() {
+    _bucketResponding() {
         return new Promise(
             (resolve, reject)=> {
-                request.get({
-                    url: "http://" + this.locals.endPoint + "/pools/default/buckets/" + this.locals.sampleBucket + "/stats",
+                var data = {
+                    statement:"select count(*) from default"
+                };
+                request.post({
+                    url: "http://" + this.locals.endPointQuery + "/query/service" ,
                     auth: {
                         'user': this.locals.user,
                         'pass': this.locals.password,
                         'sendImmediately': true
-                    }
+                    },
+                    form: data
                 }, (err, httpResponse, body) => {
                     if (err) {
+                        console.log("ERR:",err);
                         resolve(false);
-                        //return;
+                        return;
                     }
-                    //console.log("d, statslength,",JSON.parse(body).op.samples.timestamp.length)
-                    if (JSON.parse(body).op.samples.timestamp.length>=5) {
+                    if (httpResponse.statusCode==200) {
                         resolve(true);
                     }
                     else{
@@ -365,6 +368,30 @@ class cluster {
                 });
             });
     }
+
+    _servicesPublished() {
+    return new Promise(
+        (resolve, reject)=> {
+            request.get({
+                url: "http://" + this.locals.endPoint + "/pools/default/b/" + this.locals.sampleBucket,
+                auth: {
+                    'user': this.locals.user,
+                    'pass': this.locals.password,
+                    'sendImmediately': true
+                }
+            }, (err, httpResponse, body) => {
+                if (err) {
+                    resolve(false);
+                }
+                if (JSON.parse(body).nodesExt[0].services.n1ql==8093) {
+                    resolve(true);
+                }
+                else{
+                    resolve(false);
+                }
+            });
+        });
+      }
 
     _loaded() {
         return new Promise(
@@ -389,14 +416,18 @@ class cluster {
 
     _bucketOnline() {
         return new Promise(
-            (resolve, reject)=> {
-                this.locals.timerLoop = setInterval(()=> {
-                    this._buckretResponding().then((loaded)=> {
+            (resolve, reject) => {
+                this.locals.timerLoop = setInterval(() => {
+                    this._bucketResponding().then((loaded) => {
                         if (loaded) {
-                            clearInterval(this.locals.timerLoop);
-                            console.log("\n    BUCKET:", this.locals.sampleBucket, "READY.");
-                            resolve("DONE");
-                            return;
+                            this._servicesPublished().then((published) => {
+                                if (published) {
+                                    clearInterval(this.locals.timerLoop);
+                                    console.log("\n    BUCKET:", this.locals.sampleBucket, "READY.");
+                                    resolve("DONE");
+                                    return;
+                                }
+                            });
                         }
                         process.stdout.write(".");
                     });
@@ -408,6 +439,8 @@ class cluster {
     _verifyCouchbaseVersion(locals){
         return new Promise(
             (resolve, reject)=> {
+              console.log("WAITING FOR INSTANCE TO RESPOND")
+              this.locals.timerLoop = setInterval(()=> {
                 request.get({
                     url: "http://" + this.locals.endPoint + "/pools",
                     auth: {
@@ -417,13 +450,16 @@ class cluster {
                     }
                 }, (err, httpResponse, body) => {
                     if (err) {
-                        resolve(false);
-                        return;
-                    }
+                      process.stdout.write(".");
+                    }else{
+                    clearInterval(this.locals.timerLoop);
+                    process.stdout.write("READY");
                     var ver = (JSON.parse(body).implementationVersion).split(".",2);
                     this._instanceVersion=parseFloat(ver[0]+"."+ver[1]);
                     resolve(locals);
-                });
+                    return;
+                  }
+                });},this.locals.checkInterval);
             });
     }
 
@@ -446,7 +482,7 @@ class cluster {
                 var load = require('./load');
                 load.attempt();
                 console.log("Cluster " + this.locals.endPoint + " provisioning complete. \n" +
-                    "   To login to couchbase: open a browser " + this.locals.endPoint + "\n" );
+                            "   To login to couchbase: open a browser " + this.locals.endPoint + "\n" );
                 resolve("ok");
             });
     }

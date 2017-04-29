@@ -10,13 +10,12 @@ var faker = require('faker');
 var couchbase = require('couchbase');
 
 // Setup Cluster Connection Object
-var cluster = new couchbase.Cluster(config.application.connString);
+var cluster = new couchbase.Cluster(config.application.connectionstring);
 
 // Setup Bucket object to be reused within the code
-var bucket = cluster.openBucket(config.couchbase.bucket);
-
-// Bucket Manager, needed for building deferred indexes
-var manager = new bucket.manager();
+var bucket = cluster.openBucket(config.couchbase.bucket,(err)=>{
+  if (err) console.log("ERR OpenBucket:",err);
+});
 
 // Primary Index String
 var primaryIndex = 'CREATE PRIMARY INDEX p1 ON ' + config.couchbase.bucket +
@@ -60,14 +59,14 @@ var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
 module.exports.attempt = function(){
   return new Promise(
     (resolve,reject) => {
-      defineIndex(primaryIndex, "PRIMARY")
+      addAtomicCounterExampleDocs()
+          .then(_ => defineIndex(primaryIndex, "PRIMARY"))
           .then(_ => defineIndex(ccnIndex, "find_pii_ccn"))
           .then(_ => defineIndex(ssnIndex, "find_pii_ssn"))
           .then(_ => defineIndex(rangeIndex, "find_meta"))
           .then(_ => defineIndex(counterIndex, "counter_index"))
           .then(_ => defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
           .then(_ => defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
-          .then(_ => addAtomicCounterExampleDocs())
           .then(_ => defineIndex(buildIndexString,'Deferred Indexes'))
           .then(preload)
           .then((status) => {
@@ -90,7 +89,10 @@ function defineIndex(indexQuery, indexName) {
             // Send the query
             bucket.query(q, (err, res) => {
                 // Fires on error
-                if (err) reject(err);
+                if (err){
+                  console.log("ERR QUERY:",err);
+                  reject(err);
+                }
 
                 // Fires when index created
                 if (res) {

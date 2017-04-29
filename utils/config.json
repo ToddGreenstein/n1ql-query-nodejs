@@ -1,7 +1,7 @@
 {
     "couchbase": {
-        "endPoint": "127.0.0.1:8091",
-        "n1qlService": "127.0.0.1:8093",
+        "endPoint": "cbdb:8091",
+        "n1qlService": "cbdb:8093",
         "ftsService": "127.0.0.1:8094",
         "hostName": "127.0.0.1",
         "bucket": "default",
@@ -11,7 +11,7 @@
         "indexPath": "",
         "indexerStorageMode":"memory_optimized",
         "showQuery": false,
-        "indexMemQuota": 2048,
+        "indexMemQuota": 1024,
         "dataMemQuota": 2048,
         "ftsMemoryQuota":"0",
         "bucketType":"membase",
@@ -27,7 +27,7 @@
         "thresholdItemCount": 250000,
         "opsGroup": 1000,
         "autoprovision": true,
-        "connectionstring": "couchbase://localhost",
+        "connectionstring": "couchbase://cbdb",
         "wait": 3000,
         "checkInterval": 1000
     }
