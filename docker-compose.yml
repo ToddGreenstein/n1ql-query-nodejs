@@ -7,6 +7,8 @@ services:
             - "8091-8094:8091-8094"
             - "11207-11210:11207-11210"
             - "18091-18094:18091-18094"
+        volumes:
+            - ~/couchbase/ns:/opt/couchbase/var
     nodejs:
         build:
           context: .
