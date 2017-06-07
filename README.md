@@ -4,6 +4,7 @@ environment
 ## REQUIREMENTS
 - **Clone this repo**   
 - **docker-compose version 1.11 (support for version 3 yml) or greater**   
+- **Assign docker at least 5 gigs of memory**   
 - **To run and build in one command**   
 docker-compose up --build -d
 
