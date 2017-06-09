@@ -11,7 +11,7 @@
         "indexPath": "",
         "indexerStorageMode":"memory_optimized",
         "showQuery": false,
-        "indexMemQuota": 1024,
+        "indexMemQuota": 2048,
         "dataMemQuota": 2048,
         "ftsMemoryQuota":"0",
         "bucketType":"membase",

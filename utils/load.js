@@ -35,26 +35,35 @@ var ccnIndex = 'CREATE INDEX find_pii_ccn ON ' + config.couchbase.bucket +
     '(v),"(\\\\d{4}-\\\\d{4}-\\\\d{4}-\\\\d{4}))|(\\\\b\\\\d{16}\\\\b)") END' +
     ' WITH {"defer_build":true}';
 
+// Secondary Index for doing array sum of payment entries and array count of total
 var paymentsByUserIndex = 'CREATE INDEX `sum_payments_by_user` ON ' +
     config.couchbase.bucket + '(email, ARRAY_COUNT(ARRAY v.amount ' +
     'FOR v IN accountHistory WHEN v.type="payment" END), ARRAY_SUM' +
     '(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN ' +
     'v.type="payment" END)) WHERE email IS NOT MISSING WITH {"defer_build":true}';
 
+// Find account entries by user and type
 var acctEntriesByUsersIndex = 'CREATE INDEX `find_acct_entries_by_user` ON '+
     config.couchbase.bucket + '(`email`,DISTINCT ARRAY v.type FOR v IN '+
     'accountHistory END, accountHistory) WITH {"defer_build":true}'
 
+// Range query that exploits the key mask pattern
 var rangeIndex = 'CREATE INDEX find_meta ON ' + config.couchbase.bucket +
     '(TONUMBER(LTRIM(meta().id,"test::"))) WITH {"defer_build":true}';
 
+// Index for totaling atomic counter documents, using a keymask
 var counterIndex = 'CREATE INDEX counter_index ON ' + config.couchbase.bucket +
-'((meta().id),self) WHERE (substr((meta().id), 0, 7) = "counter")' +
-' WITH {"defer_build":true}';
+    '((meta().id),self) WHERE (substr((meta().id), 0, 7) = "counter")' +
+    ' WITH {"defer_build":true}';
+
+// Date range index for searching dates within an array
+var dateRangeIndex = 'CREATE INDEX date_range ON ' + config.couchbase.bucket +
+    '(DISTINCT ARRAY v.date FOR v IN accountHistory END)' +
+    ' WITH {"defer_build":true}';
 
 var buildIndexString = 'BUILD INDEX ON ' + config.couchbase.bucket +
     '(p1,find_pii_ccn,find_pii_ssn,find_meta,sum_payments_by_user,' +
-    'find_acct_entries_by_user,counter_index) USING GSI';
+    'find_acct_entries_by_user,counter_index,date_range) USING GSI';
 
 module.exports.attempt = function(){
   return new Promise(
@@ -67,6 +76,7 @@ module.exports.attempt = function(){
           .then(_ => defineIndex(counterIndex, "counter_index"))
           .then(_ => defineIndex(paymentsByUserIndex, 'sum_payments_by_user'))
           .then(_ => defineIndex(acctEntriesByUsersIndex, 'find_acct_entries_by_user'))
+          .then(_ => defineIndex(dateRangeIndex, 'date_range'))
           .then(_ => preload())
           .then(_ => defineIndex(buildIndexString,'Deferred Indexes'))
           .then((status) => {
@@ -172,4 +182,24 @@ function preload() {
                 upsertOne();
             }
         });
+}
+
+// Random inclusive integer function
+function getRandom(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Override of the transaction method in faker library to include random dates
+//   within a specifid range.
+faker.helpers.createTransaction = function() {
+  return {
+  "amount" : faker.finance.amount(),
+  "date" : new Date(getRandom(2014,2017),getRandom(1,12),getRandom(1,28)),
+  "business": faker.company.companyName(),
+  "name": [faker.finance.accountName(), faker.finance.mask()].join(' '),
+  "type" : faker.helpers.randomize(faker.definitions.finance.transaction_type),
+  "account" : faker.finance.account()
+}
 }

@@ -105,19 +105,43 @@ SELECT * FROM default
 END
 ```    
 
-### Find Invoices - Identify account entries of type invoices.
+### Find Invoices by Type - Identify account entries of type invoices.
 Query to flatten an array of account history and return account entries that are type invoice
 - **Index**
 ```sql
-CREATE INDEX `find_invoice_entries_by_user` ON
-  `default`(email, DISTINCT ARRAY v.type FOR v IN accountHistory WHEN v.type = “invoice” END, accountHistory);
+CREATE INDEX find_acct_entries_by_user ON
+    default(email, DISTINCT ARRAY v.type FOR v IN accountHistory WHEN v.type = “invoice” END, accountHistory);
  ```
 - **Query**
 ```sql
 SELECT default.email, v.account, v.type, v.amount
-  FROM default
-  UNNEST accountHistory v
+FROM default
+    UNNEST accountHistory v
 WHERE default.email IS NOT MISSING AND v.type='invoice'
+```
+
+### Find Account Entries by Date Range - Use a UTC Date range to find account entries.
+Query for large data sets to flatten account history entries and include higher level fields,
+"email" in this case.  An example is also included for a covering index and query
+- **Index**
+```sql
+CREATE INDEX date_range ON
+    default(DISTINCT ARRAY v.date FOR v IN accountHistory END)
+--Covering, note the addition of the entire field at the end "accountHistory"
+CREATE INDEX date_range ON
+    default(DISTINCT ARRAY v.date FOR v IN accountHistory END, accountHistory)
+```
+- **Query**
+```sql
+SELECT default.email, v.account, v.type, v.amount, v.name
+    FROM default
+    UNNEST accountHistory v
+WHERE v.date BETWEEN '2012-02-01T00:00:00.000Z' AND '2014-02-03T00:00:00.000Z'
+--If using the covering index defined above, omit the email field for a covered query
+SELECT v.account, v.type, v.amount, v.name
+    FROM default
+    UNNEST accountHistory v
+WHERE v.date BETWEEN '2012-02-01T00:00:00.000Z' AND '2014-02-03T00:00:00.000Z'
 ```
 
 ### Sum Payments - Sum all amounts of type payments , and total count of payments made by each user.
@@ -125,15 +149,15 @@ Query to sum all amounts of an accountHistory type (in this case payments) and t
 - **Index**
 ```sql
 CREATE INDEX sum_payments_by_user on default(email,
-  ARRAY_COUNT(ARRAY v.amount FOR v IN accountHistory WHEN v.type='payment' END) ,
-  ARRAY_SUM(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN v.type='payment' END))
+    ARRAY_COUNT(ARRAY v.amount FOR v IN accountHistory WHEN v.type='payment' END) ,
+    ARRAY_SUM(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN v.type='payment' END))
 WHERE email IS NOT MISSING
 ```
 - **Query**
 ```sql
 SELECT email,
-  ARRAY_COUNT(ARRAY v.amount FOR v IN accountHistory WHEN v.type='payment' END) count,
-  ARRAY_SUM(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN v.type='payment' END) total
+    ARRAY_COUNT(ARRAY v.amount FOR v IN accountHistory WHEN v.type='payment' END) count,
+    ARRAY_SUM(ARRAY TONUMBER(v.amount) FOR v IN accountHistory WHEN v.type='payment' END) total
 FROM default USE INDEX (sum_payments_by_user) WHERE email IS NOT MISSING
 ```
 
