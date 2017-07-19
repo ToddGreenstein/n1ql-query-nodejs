@@ -2,7 +2,7 @@ version: '3'
 
 services:
     cbdb:
-        image: couchbase/server:4.6.1
+        image: couchbase/server:4.6.2
         ports:
             - "8091-8094:8091-8094"
             - "11207-11210:11207-11210"
