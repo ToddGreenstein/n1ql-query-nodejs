@@ -14,14 +14,14 @@
         "indexMemQuota": 2048,
         "dataMemQuota": 2048,
         "ftsMemoryQuota":"0",
-        "bucketType":"membase",
+        "bucketType":"ephemeral",
         "flushEnabled":1,
-        "evictionPolicy":"valueOnly",
+        "evictionPolicy":"nruEviction",
         "conflictResolutionType":"seqno",
         "authType":"sasl",
         "replicaIndex":0,
         "replicaNumber":0,
-        "threadsNumber":3
+        "threadsNumber":8
     },
     "application": {
         "thresholdItemCount": 250000,

@@ -249,17 +249,13 @@ class cluster {
         return new Promise(
             (resolve, reject) => {
               var data = {
-                authType:locals.authType,
                 bucketType: locals.bucketType,
                 conflictResolutionType: locals.conflictResolutionType,
                 evictionPolicy: locals.evictionPolicy,
                 flushEnabled:locals.flushEnabled,
                 name:locals.sampleBucket,
-                otherBucketsRamQuotaMB:0,
                 ramQuotaMB:locals.dataMemQuota,
-                replicaIndex:locals.replicaIndex,
                 replicaNumber:locals.replicaNumber,
-                saslPassword:'',
                 threadsNumber: locals.threadsNumber
               }
 
@@ -280,6 +276,7 @@ class cluster {
                     if (httpResponse.statusCode == 202) {
                         resolve(locals);
                     }
+                    // console.log("  PROVISION DEBUG:", data, body);
                     reject(httpResponse.statusCode);
                 });
             });

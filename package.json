@@ -10,7 +10,7 @@
   "author": "todd@couchbase.com",
   "license": "ISC",
   "dependencies": {
-    "couchbase": "~2.3.0",
+    "couchbase": "~2.3.5",
     "faker" : "~4.1.0",
     "request":"~2.79.0"
   }

@@ -12,6 +12,9 @@ var couchbase = require('couchbase');
 // Setup Cluster Connection Object
 var cluster = new couchbase.Cluster(config.application.connectionstring);
 
+// Authenticate to cluster
+cluster.authenticate(config.couchbase.user, config.couchbase.password);
+
 // Setup Bucket object to be reused within the code
 var bucket = cluster.openBucket(config.couchbase.bucket,(err)=>{
   if (err) console.log("ERR OpenBucket:",err);
